@@ -5,6 +5,7 @@ run-name: Posting jars on Curseforge and Modrinth
 on:
   release:
     types: [ published ]
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -202,166 +203,13 @@ jobs:
       - run: echo "quilt mc versions are ${{ steps.version.outputs.QUILT_MC_VERSIONS }}"
       - run: echo "quilt mod version ${{ steps.version.outputs.MOD_VERSION_QUILT }}"
 
-      - name: publish fabric
-        if: steps.assets.outputs.FABRIC_FILE_PATH != ''
-        uses: Kir-Antipov/mc-publish@v3.3
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v4.6.0
         with:
-          modrinth-id: wGoQDPN5
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          modrinth-featured: false
+          # Artifact name
+          name: "${{ steps.version.outputs.VERSION_NAME_FABRIC }}-fabric" # optional, default is artifact
+          # A file, directory or wildcard pattern that describes what to upload
+          path: ${{ steps.assets.outputs.FABRIC_FILE_PATH }}
+          # The desired behavior if no files are found using the provided path.
+          
 
-          curseforge-id: 667903
-          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-
-          files: ${{ steps.assets.outputs.FABRIC_FILE_PATH }}
-
-          name: "${{ steps.version.outputs.VERSION_NAME_FABRIC }}"
-          version: "${{ steps.version.outputs.MOD_VERSION_FABRIC }}"
-          version-type: "${{ steps.version.outputs.RELEASE_TYPE }}"
-
-          loaders: "${{ steps.version.outputs.LOADERS_FABRIC }}"
-          #game-versions: "${{ steps.version.outputs.FABRIC_MC_VERSIONS }}"
-
-      - name: publish forge
-        if: steps.assets.outputs.FORGE_FILE_PATH != ''
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: wGoQDPN5
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          modrinth-featured: false
-
-          curseforge-id: 667903
-          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-
-          files: ${{ steps.assets.outputs.FORGE_FILE_PATH }}
-
-          name: "${{ steps.version.outputs.VERSION_NAME_FORGE }}"
-          version: "${{ steps.version.outputs.MOD_VERSION_FORGE }}"
-          version-type: "${{ steps.version.outputs.RELEASE_TYPE }}"
-
-          loaders: "${{ steps.version.outputs.LOADERS_FORGE}}"
-          #game-versions: "${{ steps.version.outputs.FORGE_MC_VERSIONS }}"
-
-      - name: publish neoforge
-        if: steps.assets.outputs.NEOFORGE_FILE_PATH != ''
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: wGoQDPN5
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          modrinth-featured: false
-
-          curseforge-id: 667903
-          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-
-          files: ${{ steps.assets.outputs.NEOFORGE_FILE_PATH }}
-
-          name: "${{ steps.version.outputs.VERSION_NAME_NEOFORGE }}"
-          version: "${{ steps.version.outputs.MOD_VERSION_NEOFORGE }}"
-          version-type: "${{ steps.version.outputs.RELEASE_TYPE }}"
-
-          loaders: "${{ steps.version.outputs.LOADERS_NEOFORGE}}"
-          #game-versions: "${{ steps.version.outputs.FORGE_MC_VERSIONS }}"
-
-      - name: publish quilt
-        if: steps.assets.outputs.QUILT_FILE_PATH != ''
-        uses: Kir-Antipov/mc-publish@v3.3
-        with:
-          modrinth-id: wGoQDPN5
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          modrinth-featured: false
-
-          curseforge-id: 667903
-          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-
-          files: ${{ steps.assets.outputs.QUILT_FILE_PATH }}
-
-          name: "${{ steps.version.outputs.VERSION_NAME_QUILT }}"
-          version: "${{ steps.version.outputs.MOD_VERSION_QUILT}}"
-          version-type: "${{ steps.version.outputs.RELEASE_TYPE }}"
-
-          loaders: "${{ steps.version.outputs.LOADERS_QUILT}}"
-          #game-versions: "${{ steps.version.outputs.QUILT_MC_VERSIONS }}"
-
-      # update forge versions json
-      - name: checkout repo forge-versions
-        if: steps.assets.outputs.FORGE_FILE_PATH != '' || steps.assets.outputs.NEOFORGE_FILE_PATH != ''
-        uses: actions/checkout@v4
-        with:
-          ref: 'forge-versions'
-
-      - name: setup python
-        if: steps.assets.outputs.FORGE_FILE_PATH != '' || steps.assets.outputs.NEOFORGE_FILE_PATH != ''
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: execute py script to update forge json
-        if: steps.assets.outputs.FORGE_FILE_PATH != ''
-        run: |
-          python -c "
-          import sys, json
-          print(sys.argv)
-          mc_version = sys.argv[1]
-          mod_version = sys.argv[2]
-          release_type = sys.argv[3]
-          jsonContent = {}
-          with open('forge_updates.json', 'r') as infile:
-            jsonContent = json.load(infile)
-          for str in mc_version.split(','):
-            version = str.strip('[]\" ')
-            if version != '' and version[-1:] != ')' and version[:1] != '(':
-              jsonContent['promos'][version + '-latest'] = mod_version
-              print('added ' + version + '-latest:' + mod_version)
-              if release_type == 'release':
-                jsonContent['promos'][version + '-recommended'] = mod_version
-                print('added ' + version + '-recommended:' + mod_version)
-          print(json.dumps(jsonContent, indent='\t'))
-          with open('forge_updates.json', 'w') as outfile:
-            outfile.write(json.dumps(jsonContent, indent='\t'))
-          " "${{ steps.version.outputs.FORGE_MC_VERSIONS }}" "${{ steps.version.outputs.MOD_VERSION }}" "${{ steps.version.outputs.RELEASE_TYPE }}"
-
-      - name: execute py script to update neoforge json
-        if: steps.assets.outputs.NEOFORGE_FILE_PATH != ''
-        run: |
-          python -c "
-          import sys, json
-          print(sys.argv)
-          mc_version = sys.argv[1]
-          mod_version = sys.argv[2]
-          release_type = sys.argv[3]
-          jsonContent = {}
-          with open('neoforge_updates.json', 'r') as infile:
-            jsonContent = json.load(infile)
-          for str in mc_version.split(','):
-            version = str.strip('[]\" ')
-            if version != '' and version[-1:] != ')' and version[:1] != '(':
-              jsonContent['promos'][version + '-latest'] = mod_version
-              print('added ' + version + '-latest:' + mod_version)
-              if release_type == 'release':
-                jsonContent['promos'][version + '-recommended'] = mod_version
-                print('added ' + version + '-recommended:' + mod_version)
-          print(json.dumps(jsonContent, indent='\t'))
-          with open('neoforge_updates.json', 'w') as outfile:
-            outfile.write(json.dumps(jsonContent, indent='\t'))
-          " "${{ steps.version.outputs.NEOFORGE_MC_VERSIONS }}" "${{ steps.version.outputs.MOD_VERSION }}" "${{ steps.version.outputs.RELEASE_TYPE }}"
-
-      - name: push new update json forge
-        if: steps.assets.outputs.FORGE_FILE_PATH != '' && steps.assets.outputs.NEOFORGE_FILE_PATH == ''
-        uses: EndBug/add-and-commit@v9
-        with:
-          message: 'update forge ${{ steps.version.outputs.FORGE_MC_VERSIONS }} to ${{ steps.version.outputs.MOD_VERSION }}'
-          push: true
-
-      - name: push new update json neoforge
-        if: steps.assets.outputs.FORGE_FILE_PATH == '' && steps.assets.outputs.NEOFORGE_FILE_PATH != ''
-        uses: EndBug/add-and-commit@v9
-        with:
-          message: 'update neoforge ${{ steps.version.outputs.NEOFORGE_MC_VERSIONS }} to ${{ steps.version.outputs.MOD_VERSION }}'
-          push: true
-
-      - name: push new update json forge+neoforge
-        if: steps.assets.outputs.FORGE_FILE_PATH != '' && steps.assets.outputs.NEOFORGE_FILE_PATH != ''
-        uses: EndBug/add-and-commit@v9
-        with:
-          message: 'update forge ${{ steps.version.outputs.FORGE_MC_VERSIONS }} to ${{ steps.version.outputs.MOD_VERSION }} and update neoforge ${{ steps.version.outputs.NEOFORGE_MC_VERSIONS }} to ${{ steps.version.outputs.MOD_VERSION }}'
-          push: true
